@@ -1,5 +1,3 @@
-# source: Adapted from IQL implementation for AWAC
-# https://arxiv.org/abs/2006.09359
 import copy
 import os
 import random
@@ -81,7 +79,7 @@ class TrainConfig:
     max_timesteps: int = int(100000)
 
     # Checkpoint 保存路径
-    checkpoints_path: str = "D:\\Program Files (x86)\\IDE\\JetBrains\\PycharmProjects\\CrowdNav-master_danren\\crowd_nav\\data\\output_awac"
+    checkpoints_path: str = "crowd_nav\\data\\output_awac"
 
     # AWAC Parameters
     buffer_size: int = 2000000
@@ -563,7 +561,7 @@ def eval_actor(
     # 这里的 env 配置逻辑保留你原来的写法
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config')
+                        default='crowd_nav\configs\env.config')
     args, _ = parser.parse_known_args()
 
     actor.eval()
@@ -639,7 +637,7 @@ def test_actor(
     # 配置 Robot
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_config', type=str,
-                        default="D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config")
+                        default="crowd_nav\configs\env.config")
     args, _ = parser.parse_known_args()
 
     env_config = configparser.RawConfigParser()
@@ -700,7 +698,7 @@ def train(config: TrainConfig):
     max_action = float(1)
 
     # 1. Load Data
-    file_path = "D:\\Program Files (x86)\\IDE\\JetBrains\\PycharmProjects\\CrowdNav-master_danren\\crowd_nav\\Crowd_nav_5\\Crowd_nav_5.hdf5"
+    file_path = ""
     with h5py.File(file_path, 'r') as f:
         dataset = {k: np.array(v) for k, v in f.items()}
 
