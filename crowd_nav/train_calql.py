@@ -1,5 +1,3 @@
-# source: https://github.com/nakamotoo/Cal-QL/tree/main
-# https://arxiv.org/pdf/2303.05479.pdf
 import sys
 import os
 
@@ -55,26 +53,21 @@ class TrainConfig:
     n_episodes: int = 500  # How many episodes run during evaluation
     offline_iterations: int = int(100000)  # Number of offline updates
     online_iterations: int = int(50000)  # Number of online updates
-    checkpoints_path: Optional[str] = "D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\data\output_calql"  # Save path
-    # load_model: str = "D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\data\output_calql\Cal-QL-Model\checkpoint_99999.pt"  # Model load file name, "" doesn't load
-    load_model: str = "D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\data\output_calql\Cal-QL-train_log\calql_online_final.pt"
-    # /hd_2t/fuhao2024/Yzc/cql_model/rlhf_cql_1764588560.pt
+    checkpoints_path: Optional[str] = ""  # Save path
+    load_model: str = ""
     # CQL
     buffer_size: int = 2_000_000  # Replay buffer size
     batch_size: int = 256  # Batch size for all networks
     discount: float = 0.99  # Discount factor
     alpha_multiplier: float = 1.0  # Multiplier for alpha in loss
     use_automatic_entropy_tuning: bool = True  # Tune entropy
-    # backup_entropy: bool = False  # Use backup entropy
-    backup_entropy: bool = True  # ✅ online 阶段更稳
-    # policy_lr: float = 3e-5  # Policy learning rate
-    policy_lr: float = 1e-4  # ✅ actor 提速
+    backup_entropy: bool = True  #  online 阶段更稳
+    policy_lr: float = 1e-4  #  actor 提速
     qf_lr: float = 3e-4  # Critics learning rate
     soft_target_update_rate: float = 5e-3  # Target network update rate
     bc_steps: int = int(0)  # Number of BC steps at start
     target_update_period: int = 1  # Frequency of target nets updates
-    # cql_alpha: float = 10.0  # CQL offline regularization parameter
-    cql_alpha: float = 1.0  # ❗ 原来 10，太大
+    cql_alpha: float = 1.0  # 
     cql_alpha_online: float = 10.0  # CQL online regularization parameter
     cql_n_actions: int = 10  # Number of sampled actions
     cql_importance_sample: bool = True  # Use importance sampling
@@ -250,7 +243,7 @@ def eval_actor(
     global cnt
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config')
+                        default='crowd_nav\configs\env.config')
     args = parser.parse_args()
     actor.eval()
     env_config = configparser.RawConfigParser()
@@ -313,7 +306,7 @@ def test_actor(
 ):
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config')
+                        default='crowd_nav\configs\env.config')
     args = parser.parse_args()
 
     actor.eval()
@@ -1160,7 +1153,7 @@ class CalQL:
 def train(config: TrainConfig):
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config')
+                        default='crowd_nav\configs\env.config')
     args = parser.parse_args()
     # actor.eval()
     env_config = configparser.RawConfigParser()
@@ -1174,9 +1167,7 @@ def train(config: TrainConfig):
     state_dim = 65
     action_dim = 2
 
-    file_path = "D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\Crowd_nav_5\Crowd_nav_5.hdf5"
-    # file_path = "/hd_2t/czx/project/CrowdNav/crowd_nav/offline_data/Crowd_nav_6.hdf5"
-    # file_path = "/hd_2t/fuhao2024/Yzc/NEW_cav/CrowdNav/Crowd_nav_5/Crowd_nav_5.hdf5"
+    file_path = ""
     with h5py.File(file_path, 'r') as f:
         dataset = {k: np.array(v) for k, v in f.items()}
 
@@ -1393,16 +1384,11 @@ def train(config: TrainConfig):
     list2 = np.array(list2)
     list3 = np.array(list3)
     list4 = np.array(list4)
-    # print(list1)
-    # print(list2)
-    # print(list3)
-    # print(list4)
     ts_sec = int(time.time())
     pt_file_sec = f"rlhf_cql_{ts_sec}.pt"
     npz_file_sec = f"success_cql_{ts_sec}.npz"
     torch.save(trainer.state_dict(), os.path.join(config.checkpoints_path, pt_file_sec), )
-    # np.savez(os.path.join('/hd_2t/fuhao2024/Yzc/table', npz_file_sec),
-    #          success=list1, collision=list2, time=list3, reward=list4)
+
 
 
 if __name__ == "__main__":
