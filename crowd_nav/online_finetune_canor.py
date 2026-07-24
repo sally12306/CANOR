@@ -10,7 +10,7 @@ import numpy as np
 import pyrallis
 import torch
 
-from crowd_nav.CANOR import (
+from crowd_nav.canor import (
     TrainConfig,
     DualReplayBuffer,
     TwinQ,
