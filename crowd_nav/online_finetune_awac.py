@@ -81,7 +81,7 @@ def main(config: TrainConfig):
 
     # 读取环境配置 (用于 Robot 和后续 env.configure)
     # 请确保此路径指向正确的 env.config 文件
-    env_config_file = "D:\\Program Files (x86)\\IDE\\JetBrains\\PycharmProjects\\CrowdNav-master_danren\\crowd_nav\\configs\\env.config"
+    env_config_file = "crowd_nav\\configs\\env.config"
     env_config = configparser.RawConfigParser()
     env_config.read(env_config_file)
     env.configure(env_config)  # 配置环境参数
@@ -143,7 +143,7 @@ def main(config: TrainConfig):
         state_dim, action_dim, config.buffer_size, config.online_buffer_max_size, config.device
     )
 
-    hdf5_path = "D:\\Program Files (x86)\\IDE\\JetBrains\\PycharmProjects\\CrowdNav-master_danren\\crowd_nav\\Crowd_nav_5\\Crowd_nav_5.hdf5"
+    hdf5_path = ""
     logger.info(f"Loading offline dataset: {hdf5_path}")
     with h5py.File(hdf5_path, "r") as f:
         dataset = {k: np.array(v) for k, v in f.items()}
