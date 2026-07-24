@@ -1,14 +1,6 @@
-# CAN
+# CANOR
 
-This repository contains the codes for our paper titled "CAN: A Conflict-Aware Novelty-Weighted Algorithm for Offline-to-Online Crowd Robot For experiment demonstrations, please refer to the [youtube video](https://youtu.be/K9kPEDEgjGY) Navigation". 
-
-
-
-### The overall framework of our CAN algorithm
-<img src="https://raw.githubusercontent.com/sally12306/CAN/main/crowd_nav/figure/CAN.png" 
-     alt="Logo" 
-     width="80%"/>
-
+This repository contains the codes for our paper titled "CANOR: Conflict-Aware Novelty-Weighted Offline-to-Online Reinforcement Learning for Robot Crowd Navigation". 
 
 
 
@@ -32,11 +24,11 @@ python trajectory.py
 ```
 2. Offline pre-training
 ```
-python iql_rrnd.py
+python canor.py
 ```
 3. Online fine-tuning
 ```
-python online_finetune_only.py
+python online_finetune_canor.py
 ```
 
 
