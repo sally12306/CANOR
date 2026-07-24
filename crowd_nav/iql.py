@@ -1229,8 +1229,7 @@ def eval_actor(
     human_num: int = 7,
     human_state_dim: int = 13,
     env_config_path: str = (
-        r"D:\Program Files (x86)\IDE\JetBrains\PycharmProjects"
-        r"\CrowdNav-master_danren\crowd_nav\configs\env.config"
+        r"crowd_nav\configs\env.config"
     ),
 ):
     del env
@@ -1264,8 +1263,7 @@ def test_actor(
     human_num: int = 7,
     human_state_dim: int = 13,
     env_config_path: str = (
-        r"D:\Program Files (x86)\IDE\JetBrains\PycharmProjects"
-        r"\CrowdNav-master_danren\crowd_nav\configs\env.config"
+        r"crowd_nav\configs\env.config"
     ),
 ):
     del env
