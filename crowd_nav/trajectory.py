@@ -20,9 +20,9 @@ from collections import deque
 def main():
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\env.config')
+                        default='crowd_nav\configs\env.config')
     parser.add_argument('--policy_config', type=str,
-                        default='D:\Program Files (x86)\IDE\JetBrains\PycharmProjects\CrowdNav-master_danren\crowd_nav\configs\policy.config')
+                        default='crowd_nav\configs\policy.config')
     parser.add_argument('--policy', type=str, default='orca')
     parser.add_argument('--phase', type=str, default='train')
     parser.add_argument('--mode', type=str, default='d')
