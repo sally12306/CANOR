@@ -2758,7 +2758,7 @@ def train(config: TrainConfig):
     # state_dim = env.observation_space.shape[0]
     # action_dim = env.action_space.shape[0]
 
-    state_dim = 65
+    state_dim = 91
     action_dim = 2
 
     # dataset = d4rl.qlearning_dataset(env)
