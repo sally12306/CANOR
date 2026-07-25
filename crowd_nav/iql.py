@@ -54,7 +54,7 @@ class TrainConfig:
     )
     load_model: str = r""
 
-    # ReplayBuffer放CPU，避免91维、百万容量时占满显存
+
     replay_buffer_device: str = "cpu"
 
     # ---------------- IQL ----------------
@@ -62,13 +62,13 @@ class TrainConfig:
     batch_size: int = 256
     discount: float = 0.99
 
-    # 目标Q网络软更新系数，不是IQL expectile参数
+
     tau: float = 0.005
 
-    # 当前实现使用 exp(beta * advantage)，因此beta是“逆温度”
+
     beta: float = 3.0
 
-    # expectile regression参数，必须处于(0, 1)
+
     iql_tau: float = 0.7
 
     iql_deterministic: bool = False
@@ -82,19 +82,19 @@ class TrainConfig:
     success_buffer_max_size: int = 100_000
     online_episodes: int = 50_000
 
-    # Critic在约1000条在线transition后开始学习。
+
     min_online_steps: int = 1_000
 
-    # Actor只在成功轨迹buffer足够后参与在线更新。
+
     min_success_actor_steps: int = 2_000
     success_actor_min_return: float = 15.0
 
-    # 每回合更新两次Q/V；Actor每两次更新一次，即每回合约一次。
+
     updates_per_episode: int = 1
     actor_update_start_steps: int = 5_000
     actor_update_interval: int = 1
 
-    # Q/V使用全部在线轨迹，Actor使用离线+成功在线轨迹。
+
     critic_online_ratio_start: float = 0.25
     critic_online_ratio_end: float = 0.40
     critic_online_ratio_ramp_episodes: int = 10_000
@@ -103,36 +103,36 @@ class TrainConfig:
     actor_online_ratio_end: float = 0.45
     actor_online_ratio_ramp_episodes: int = 15_000
 
-    # 在线学习率。
+
     finetune_v_lr: float = 1e-5
     finetune_q_lr: float = 1e-5
     finetune_actor_lr: float = 8e-6
 
-    # V3后期0.05噪声仍持续产生失败轨迹，V4逐步降到0.02。
+
     initial_noise_scale: float = 0.08
     final_noise_scale: float = 0.02
     noise_decay_episodes: int = 20_000
 
-    # 保持与离线IQL一致的优势定义，但降低极端权重上限。
+
     online_beta: float = 3.0
     online_normalize_advantage: bool = False
     online_advantage_clip: float = 10.0
     online_exp_adv_max: float = 20.0
 
-    # 梯度裁剪。
+
     value_grad_clip: float = 5.0
     q_grad_clip: float = 5.0
     actor_grad_clip: float = 5.0
 
-    # 继续恢复离线Adam状态。
+
     restore_offline_optimizer_state: bool = True
 
-    # EMA策略用于在线采样、评估和最终部署。
+
     use_ema_actor: bool = True
     ema_decay: float = 0.995
     ema_rollout_start_steps: int = 5_000
 
-    # 达到较高成功率后进入巩固阶段，降低探索和Actor更新强度。
+
     consolidation_success_threshold: float = 0.78
     consolidation_noise_cap: float = 0.02
     consolidation_critic_ratio_cap: float = 0.30
@@ -140,7 +140,7 @@ class TrainConfig:
     consolidation_actor_lr: float = 4e-6
     consolidation_actor_update_interval: int = 4
 
-    # 评估保护：连续两次明显下降后，恢复完整trainer与EMA策略。
+
     eval_guard_enabled: bool = True
     eval_guard_drop_tolerance: float = 0.06
     eval_guard_patience: int = 2
@@ -150,7 +150,7 @@ class TrainConfig:
     eval_guard_noise_cap: float = 0.015
     eval_guard_critic_ratio_cap: float = 0.25
 
-    # 日志、曲线和模型选择。
+
     online_eval_freq: int = 500
     online_eval_episodes: int = 500
     curve_window: int = 200
@@ -158,9 +158,7 @@ class TrainConfig:
     save_best_online: bool = True
 
 
-# ============================================================
-# Logging and configuration helpers
-# ============================================================
+
 def setup_logger(log_dir: str, name: str = "iql") -> logging.Logger:
     os.makedirs(log_dir, exist_ok=True)
     logger = logging.getLogger(name)
@@ -207,7 +205,7 @@ def load_crowdnav_env_config(
     if not env_config.has_section("sim"):
         raise KeyError("环境配置缺少[sim]段: {}".format(env_config_path))
 
-    # 不修改磁盘文件，只覆盖本次运行读取到的配置
+
     env_config.set("sim", "human_num", str(human_num))
     return env_config
 
@@ -243,8 +241,8 @@ def validate_dataset(
     next_obs_dim = int(next_observations.shape[1])
     if obs_dim != state_dim or next_obs_dim != state_dim:
         raise ValueError(
-            "7人模型期望状态维数为{}，但数据集为{}/{}。"
-            "请使用Crowd_nav_7.hdf5，不能继续使用65维Crowd_nav_5.hdf5。"
+            "模型期望状态维数为{}，但数据集为{}/{}。"
+            " "
             "数据路径: {}".format(
                 state_dim, obs_dim, next_obs_dim, dataset_path
             )
@@ -459,9 +457,7 @@ class DualReplayBuffer:
         ]
 
 
-# ============================================================
-# State preprocessing
-# ============================================================
+
 def transform(state: JointState, device: str) -> torch.Tensor:
     if len(state.human_states) == 0:
         raise ValueError("当前环境没有行人状态，无法构造人群导航输入")
@@ -547,17 +543,9 @@ def rotate(state: torch.Tensor) -> torch.Tensor:
     )
 
 
-# ============================================================
-# Dynamic attention and neural networks
-# ============================================================
-class DynamicSelfAttention(nn.Module):
-    """
-    将[B, human_num*13]动态重塑为[B, human_num, 13]。
 
-    原项目的crowd_nav.policy.self_attention.py把状态写死为65维，
-    因而7人91维会在reshape(-1, 65)处报错。本类不写死人数，
-    对每个行人编码并做注意力池化，最终固定输出56维。
-    """
+class DynamicSelfAttention(nn.Module):
+
 
     def __init__(
         self,
@@ -805,9 +793,7 @@ class ValueFunction(nn.Module):
         return self.v(self.attention(state))
 
 
-# ============================================================
-# IQL algorithm
-# ============================================================
+
 def asymmetric_l2_loss(u: torch.Tensor, expectile: float) -> torch.Tensor:
     if not 0.0 < expectile < 1.0:
         raise ValueError("iql_tau/expectile必须严格位于(0, 1)")
@@ -860,7 +846,6 @@ class ImplicitQLearning:
         self.total_it = 0
         self.device = device
 
-        # 默认保持原始离线IQL行为；在线脚本会显式打开稳定化选项。
         self.normalize_advantage = False
         self.advantage_clip = 20.0
         self.exp_adv_max = float(EXP_ADV_MAX)
@@ -1104,9 +1089,7 @@ class ImplicitQLearning:
         self.total_it = int(state_dict.get("total_it", 0))
 
 
-# ============================================================
-# Evaluation
-# ============================================================
+
 @torch.no_grad()
 def evaluate_actor(
     actor: nn.Module,
@@ -1280,9 +1263,7 @@ def test_actor(
     )
 
 
-# ============================================================
-# Offline training
-# ============================================================
+
 @pyrallis.wrap()
 def train(config: TrainConfig) -> None:
     if not torch.cuda.is_available() and config.device.startswith("cuda"):
