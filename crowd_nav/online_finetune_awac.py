@@ -138,7 +138,7 @@ def main(config: TrainConfig):
     test_actor(env, trainer.actor, config.device, n_episodes=config.n_episodes, seed=config.seed, logger=logger)
 
     online_episodes = 50000
-    # 安全阈值：建议攒够 batch_size * 2 的数据再开始混合训练
+
     min_safe_online = max(512, 1000)
 
     for ep in range(online_episodes):
@@ -233,13 +233,11 @@ def main(config: TrainConfig):
 
         if (ep + 1) % config.eval_freq == 0:
             logger.info(f"Evaluating at episode {ep + 1}...")
-            # 注意：test_actor 内部会创建新的 env，不影响主循环
             test_actor(env, trainer.actor, config.device, n_episodes=config.n_episodes, seed=config.seed, logger=logger)
 
             # save_path = os.path.join(config.checkpoints_path, f"awac_online_{ep + 1}.pt")
             # torch.save(trainer.state_dict(), save_path)
 
-    # 最终保存
     final_path = os.path.join(config.checkpoints_path, "awac_online_final.pt")
     torch.save(trainer.state_dict(), final_path)
     logger.info(f"Finished. Model saved to {final_path}")
