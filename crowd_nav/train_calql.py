@@ -269,9 +269,7 @@ def eval_actor(
         while not done:
             joint_state = JointState(robot.get_full_state(), observation)
             state = to_np(transform(joint_state, device).view(1, -1).squeeze(0))
-            # print(state.shape)  # 输出为（65，）
             action = actor.act(state)
-            # print(action.shape)  # 输出为（2，）
             action = ActionXY(action[0], action[1])
             observation, reward, done, info = env.step(action)
             # print(reward)
@@ -1164,7 +1162,7 @@ def train(config: TrainConfig):
     robot = Robot(env_config, 'robot')
     env.set_robot(robot)
 
-    state_dim = 65
+    state_dim = 91
     action_dim = 2
 
     file_path = ""
