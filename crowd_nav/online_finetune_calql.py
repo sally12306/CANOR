@@ -9,17 +9,15 @@ import pyrallis
 import configparser
 from copy import deepcopy
 
-# ==========================================
-# 1. 导入修复：显式导入 Scalar 防止 torch.load 报错
-# ==========================================
+
 from train_calql import (
     TrainConfig,
     CalQL,
     ReplayBuffer,
     FullyConnectedQFunction,
     TanhGaussianPolicy,
-    Scalar,  # <--- 必须显式导入
-    ReparameterizedTanhGaussian,  # <--- 必须显式导入
+    Scalar,  
+    ReparameterizedTanhGaussian,  
     set_seed,
     test_actor,
     transform,
@@ -35,21 +33,17 @@ from train_calql import (
 from crowd_sim.envs.utils.robot import Robot
 
 
-# ==========================================
-# 2. Bug 修复：Monkey Patch 覆盖 ReplayBuffer.sample
-# ==========================================
 def correct_sample(self, batch_size: int):
     """
     修复原始代码中 min(size, pointer) 导致的 crash 和逻辑错误。
     正确做法是在 [0, size) 范围内采样。
     """
-    # 确保 high >= 1，防止 batch_size_online 计算异常导致 0
+
     high = self._size
     if high <= 0:
-        # 如果 buffer 是空的，这应该被外层逻辑拦截，但为了安全：
+
         return None
 
-        # 正确的采样逻辑：在有效大小内随机采样
     indices = np.random.randint(0, high, size=batch_size)
 
     states = self._states[indices]
@@ -61,13 +55,9 @@ def correct_sample(self, batch_size: int):
     return [states, actions, rewards, next_states, dones, mc_returns]
 
 
-# 应用修复：将 ReplayBuffer 类的 sample 方法替换为上面的正确版本
 ReplayBuffer.sample = correct_sample
 
 
-# ==========================================
-# 3. 日志与工具函数
-# ==========================================
 def setup_logger(log_path: str) -> logging.Logger:
     logger = logging.getLogger("calql_online_finetune")
     logger.setLevel(logging.INFO)
@@ -85,7 +75,7 @@ def setup_logger(log_path: str) -> logging.Logger:
 
 
 def compute_mc_returns(rewards, dones, discount=0.99):
-    """手动计算轨迹的 Return-to-Go (MC Returns)"""
+
     returns = []
     G = 0
     for r, d in zip(reversed(rewards), reversed(dones)):
@@ -98,7 +88,7 @@ def compute_mc_returns(rewards, dones, discount=0.99):
 
 @pyrallis.wrap()
 def main(config: TrainConfig):
-    # ================= 配置调整 =================
+
     finetune_lr = 1e-5  # 微调学习率
     online_alpha = 0.5  # 在线阶段保守系数 (0.5 ~ 1.0)
     mixing_ratio = 0.5  # 混合比例
@@ -122,7 +112,7 @@ def main(config: TrainConfig):
     robot = Robot(env_config_file, 'robot')
     env.set_robot(robot)
 
-    state_dim = 65
+    state_dim = 91
     action_dim = 2
     max_action = 1.0
 
@@ -264,7 +254,6 @@ def main(config: TrainConfig):
             ep_steps += 1
             total_online_steps += 1
 
-        # === 处理轨迹并存入 Buffer (计算 MC Return) ===
         traj_mc_returns = compute_mc_returns(traj_rewards, traj_dones, config.discount)
 
         for i in range(len(traj_states)):
@@ -305,10 +294,6 @@ def main(config: TrainConfig):
 
                 trainer.train(batch)
 
-        # === 日志与评估 ===
-        # success = isinstance(info, ReachGoal)
-        # if (ep + 1) % 10 == 0:
-        #     logger.info(f"Ep {ep + 1} | Rew: {ep_reward:.2f} | Succ: {int(success)} | Steps: {ep_steps}")
 
         if logger is not None:
             logger.info(
