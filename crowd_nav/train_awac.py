@@ -88,9 +88,6 @@ class TrainConfig:
     tau: float = 0.005
 
     # AWAC Temperature (beta):
-    # 越小 -> 越接近 BC (保守)
-    # 越大 -> 越倾向于高 Advantage 动作 (激进)
-    # 建议范围: 0.3 ~ 3.0. 如果使用优势归一化，建议 1.0 ~ 2.0
     beta: float = 1.0
 
     normalize: bool = True
@@ -100,7 +97,7 @@ class TrainConfig:
     actor_lr: float = 3e-4
 
     actor_dropout: Optional[float] = None
-    iql_deterministic: bool = False  # AWAC 也可以用确定性策略，但通常高斯策略效果更好
+    iql_deterministic: bool = False  
 
     # Online Fine-tuning related (Buffer configs)
     online_buffer_max_size: int = 100000
@@ -296,7 +293,6 @@ class GaussianPolicy(nn.Module):
     def act(self, state: np.ndarray, device: str = "cuda"):
         state = torch.tensor(state.reshape(1, -1), device=device, dtype=torch.float32)
         dist = self(state)
-        # 训练时可以采样，评估时通常用 mean
         action = dist.mean
         action = torch.clamp(self.max_action * action, -self.max_action, self.max_action)
         return action.cpu().data.numpy().flatten()
@@ -443,7 +439,6 @@ class AWAC:
             # 3. Advantage
             adv = q_val - v_val
 
-            # [重要优化] Advantage Normalization: 提升训练稳定性
             adv = (adv - adv.mean()) / (adv.std() + 1e-8)
 
             # 4. Weights
@@ -473,7 +468,6 @@ class AWAC:
         self.total_it += 1
 
         # Batch unpacking
-        # 兼容 DualBuffer 或 ReplayBuffer 返回的格式 (前5个通常是 s,a,r,ns,d)
         states, actions, rewards, next_states, dones = batch[:5]
         rewards = rewards.squeeze(dim=-1)
         dones = dones.squeeze(dim=-1)
@@ -558,7 +552,6 @@ def set_seed(seed: int, env: Optional[gym.Env] = None):
 def eval_actor(
         env: gym.Env, actor: nn.Module, list1: List, list2: List, list3: List, list4: List, device: str,
         n_episodes: int, seed: int, logger: Optional[logging.Logger] = None, global_step: Optional[int] = None):
-    # 这里的 env 配置逻辑保留你原来的写法
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--env_config', type=str,
                         default='crowd_nav\configs\env.config')
@@ -567,9 +560,6 @@ def eval_actor(
     actor.eval()
     env_config = configparser.RawConfigParser()
     env_config.read(args.env_config)
-
-    # 注意：这里可能会重新创建 env，为了避免冲突最好直接传进来的 env
-    # 但为了保持一致性，照抄你的逻辑
     eval_env = gym.make('CrowdSim-v0')
     eval_env.configure(env_config)
     robot = Robot(env_config, 'robot')
@@ -582,7 +572,6 @@ def eval_actor(
     avg_nav_time = 0
     avg_reward = 0
 
-    # 使用随机种子偏移
     eval_env.seed(seed + 100)
 
     for i in range(n_episodes):
@@ -714,7 +703,6 @@ def train(config: TrainConfig):
     if config.iql_deterministic:
         actor = DeterministicPolicy(state_dim, action_dim, max_action, dropout=config.actor_dropout)
     else:
-        # AWAC 推荐使用 GaussianPolicy
         actor = GaussianPolicy(state_dim, action_dim, max_action, dropout=config.actor_dropout)
     actor = actor.to(config.device)
 
