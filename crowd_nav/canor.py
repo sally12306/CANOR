@@ -162,17 +162,15 @@ class TrainConfig:
     online_advantage_keep_fraction: float = 0.65
     online_advantage_threshold_floor: float = -0.25
     online_advantage_min_count: int = 8
-    # Failure trajectories do not enter behavior cloning. Instead, the same
-    # single actor update receives a small local Q-guided recovery target.
+
     actor_failure_recovery_coef: float = 0.15
     actor_failure_recovery_radius: float = 0.08
     actor_failure_recovery_min_q_gain: float = 0.01
     actor_failure_recovery_min_novelty_weight: float = 0.35
-    # Keep the online policy in a trust region around the loaded offline actor.
+
     actor_anchor_coef: float = 0.03
     actor_max_relative_drift: float = 0.060
 
-    # Mean action plus one explicit Gaussian exploration source.
     exploration_std: float = 0.04
     exploration_std_start: float = 0.04
     exploration_std_mid: float = 0.02
@@ -183,7 +181,7 @@ class TrainConfig:
     action_low: float = -1.0
     action_high: float = 1.0
 
-    # ---------------- Action-conditioned RND ----------------
+
     rnd_hidden_dim: int = 256
     rnd_output_dim: int = 32
     rnd_lr: float = 3e-4
@@ -198,14 +196,13 @@ class TrainConfig:
     use_frozen_rnd_anchor: bool = True
     novelty_anchor_relaxation_cap: float = 0.05
 
-    # Value uses tau_w = tau_min + (tau_max - tau_min) * w.
+
     safe_expectile_interpolation: bool = True
     expectile_floor: float = 0.25
     tau_w_min: float = 0.0
     policy_weight_min: float = 0.0
 
-    # Sign-preserving advantage scaling: divide by a robust magnitude but never
-    # subtract a batch centre, so negative advantages cannot become positive.
+
     normalize_policy_advantage: bool = True
     advantage_scale_min: float = 0.05
     online_beta: float = 1.0
@@ -226,8 +223,7 @@ class TrainConfig:
     negative_terminal_actor_weight: float = 0.0
     q_huber_delta: float = 1.0
 
-    # Delayed conflict-aware RND adaptation. RND is frozen during the rapid early
-    # policy improvement, then adapts slowly after the policy reaches a plateau.
+
     freeze_rnd_online: bool = False
     update_rnd_online: bool = True
     online_batch_size: int = 128
@@ -251,7 +247,7 @@ class TrainConfig:
     minimum_offline_success_rate: float = 0.55
     expected_offline_checkpoint_step: int = 39999
 
-    # Old-call compatibility fields.
+
     rnd_w_min: float = 0.0
     min_safe_online: int = 0
 
@@ -287,9 +283,7 @@ class ReplayBuffer:
 
         self._states = torch.zeros((buffer_size, state_dim), dtype=torch.float32, device=device)
         self._actions = torch.zeros((buffer_size, action_dim), dtype=torch.float32, device=device)
-        # Q/V use the actually executed action. Actor extraction uses the
-        # pre-noise policy mean stored separately, so it does not imitate the
-        # external Gaussian exploration noise.
+
         self._actor_actions = torch.zeros((buffer_size, action_dim), dtype=torch.float32, device=device)
         self._rewards = torch.zeros((buffer_size, 1), dtype=torch.float32, device=device)
         self._next_states = torch.zeros((buffer_size, state_dim), dtype=torch.float32, device=device)
@@ -351,13 +345,7 @@ class ReplayBuffer:
         print(f"Dataset size: {n_transitions} loaded into unified buffer.")
 
     def sample(self, batch_size: int) -> TensorBatch:
-        """Sample a mini-batch, avoiding duplicate indices whenever possible.
 
-        Sampling with replacement from a very small online replay buffer caused
-        the first few collision transitions to appear many times in one update.
-        Once the partition contains at least ``batch_size`` transitions, the
-        mini-batch is therefore sampled without replacement.
-        """
         if self._size <= 0:
             raise RuntimeError("Cannot sample from an empty replay buffer")
         if batch_size <= 0:
@@ -384,13 +372,7 @@ class ReplayBuffer:
         return [states, actions, rewards, next_states, dones, weights, actor_actions]
 
     def sample_stratified(self, batch_size: int, failure_fraction: float = 0.0):
-        """Sample a fixed-size batch while retaining failure-boundary data.
 
-        Transitions whose replay actor mask is zero are the final K transitions
-        of collision episodes. They remain valid Q/V data but are never directly
-        behavior-cloned by the actor. This method prevents those rare transitions
-        from disappearing after the online replay becomes dominated by successes.
-        """
         if self._size <= 0:
             raise RuntimeError("Cannot sample from an empty replay buffer")
         batch_size = int(batch_size)
@@ -472,7 +454,7 @@ class ReplayBuffer:
 
 
 class DualReplayBuffer:
-    """Static offline replay partition plus circular online replay partition."""
+
 
     def __init__(
             self,
@@ -724,15 +706,7 @@ def test_actor(
         logger: Optional[logging.Logger] = None,
         test_case_start: int = 0,
 ):
-    """
-    Deterministic evaluation on a fixed sequence of test cases.
 
-    Evaluation is executed inside an RNG sandbox. The previous implementation
-    called set_seed() every 500 episodes and permanently reset NumPy, Python and
-    Torch RNG streams used by replay sampling, Bernoulli masks and exploration.
-    Saving and restoring those states keeps evaluation reproducible without
-    perturbing online training.
-    """
     del env  # evaluation uses an isolated environment instance
 
     parser = argparse.ArgumentParser("Parse configuration file", add_help=False)
@@ -1367,12 +1341,8 @@ class ImplicitQLearning:
 
     @staticmethod
     def _robust_advantage_normalize(advantage: torch.Tensor, scale_min: float):
-        """Scale advantage magnitude without changing its sign.
 
-        The previous median-centred normalization could convert a negative raw
-        advantage into a positive actor weight. Here the centre is fixed at zero
-        and only a robust RMS magnitude is used.
-        """
+
         center = torch.zeros((), device=advantage.device, dtype=advantage.dtype)
         rms = torch.sqrt(torch.mean(advantage.pow(2)) + 1e-8)
         scale = torch.clamp(rms, min=float(scale_min))
@@ -1906,7 +1876,7 @@ def _linear_schedule(start: float, end: float, step: int, warmup: int) -> float:
 
 @torch.no_grad()
 def select_policy_mean_action(actor: nn.Module, state_vec: np.ndarray, device: str) -> np.ndarray:
-    """Collect with the policy mean, then add one explicit exploration noise source."""
+
     was_training = actor.training
     actor.eval()
     state_tensor = torch.tensor(
@@ -2001,18 +1971,7 @@ def compute_novelty_weights_batch(
         return_stats: bool = False,
         rnd_anchor=None,
 ):
-    """Compute stable action-conditioned novelty weights.
 
-    ``rnd`` may adapt online.  ``rnd_anchor`` is a frozen copy of the offline
-    predictor.  The adaptive estimator is allowed to lower a weight immediately,
-    but it may increase a weight above the frozen estimate only by a small cap.
-    This prevents the failure observed in the supplied log, where online RND
-    training drove z from approximately 0 to -0.8 and made almost every online
-    sample, including collision samples, receive weight 0.95-1.0.
-
-    ``stored_weights`` remains an actor-only replay-quality mask.  Q/V continue
-    learning from failures, while failed trajectories are not behavior-cloned.
-    """
     with torch.no_grad():
         raw_error = _get_raw_error_batch_safe(rnd, states, actions)
         z_adaptive = _normalized_novelty_batch(rnd, raw_error)
@@ -2057,10 +2016,7 @@ def compute_novelty_weights_batch(
                 adaptive_weight,
                 (anchor_weight + relaxation_cap).clamp(max=1.0),
             )
-            # Only actor-valid successful online trajectories may receive an
-            # upward relaxation. Failed trajectories keep the stricter of the
-            # adaptive and frozen estimates; otherwise RND generalization made
-            # failure_w rise above 0.9 after 10k in the supplied run.
+
             if stored_weights is not None:
                 actor_valid = stored_weights.view(-1).to(states.device) > 0.5
                 failed_online = online_mask & ~actor_valid
@@ -2113,7 +2069,7 @@ def _train_conflict_aware_rnd(
         dual_buffer: DualReplayBuffer,
         config: TrainConfig,
 ):
-    """One asynchronous conflict-aware RND update; returns diagnostic metrics."""
+
     batch_size = min(int(config.online_batch_size), len(online_pairs))
     if batch_size <= 0:
         return {"rnd_update": 0.0}
@@ -2137,8 +2093,6 @@ def _train_conflict_aware_rnd(
             "novelty update required by CANOR cannot run."
         )
 
-    # Configure the estimator update without changing the checkpointed network
-    # architecture or its state-dict keys.
     rnd.use_normalized_error_variance = bool(
         _cfg(config, "rnd_use_normalized_error_variance", True)
     )
@@ -2200,7 +2154,7 @@ def _relative_parameter_drift(module: nn.Module, reference: List[torch.Tensor]) 
 
 
 def _scheduled_online_candidate_ratio(config: TrainConfig, episode_index: int) -> float:
-    """Linearly increase online candidates while keeping both replay partitions."""
+
     start = float(np.clip(config.online_sampling_ratio_start, 0.0, 1.0))
     final = float(np.clip(config.online_sampling_ratio_final, 0.0, 1.0))
     warmup = int(config.online_sampling_warmup_episodes)
@@ -2333,8 +2287,7 @@ def online_finetune_weighted_loss(
     torch.save(trainer.state_dict(), best_checkpoint_path)
     torch.save(trainer.actor.state_dict(), best_actor_path)
 
-    # Keep an immutable offline RND copy for policy/value weighting.  The live
-    # estimator may adapt, but it cannot erase the original OOD signal.
+
     rnd_anchor = None
     if bool(_cfg(config, "use_frozen_rnd_anchor", True)):
         rnd_anchor = copy.deepcopy(rnd).to(device)
@@ -2343,7 +2296,7 @@ def online_finetune_weighted_loss(
         if hasattr(rnd_anchor, "optimizer"):
             rnd_anchor.optimizer = None
 
-    # RND is frozen during the fast initial policy-improvement phase.
+
     rnd.eval()
     for parameter in rnd.parameters():
         parameter.requires_grad_(False)
@@ -2554,8 +2507,7 @@ def online_finetune_weighted_loss(
             update_logs.append(merged)
             batch_logs.append({key: float(value) for key, value in batch_info.items()})
 
-        # Delayed conflict-aware RND update. This is an auxiliary estimator
-        # update; the policy/Q/V budget remains exactly one update per episode.
+
         rnd_metrics = {
             "rnd_update": 0.0,
             "rnd_conflict": 0.0,
@@ -2882,7 +2834,7 @@ def train(config: TrainConfig):
     # Initialize actor
     trainer = ImplicitQLearning(**kwargs)
 
-    # 初始化日志
+
     os.makedirs(config.checkpoints_path, exist_ok=True)
     logger = setup_logger(config.checkpoints_path, name="iql")
     logger.info("Start training IQL | env=%s | seed=%d | device=%s", config.env, config.seed, config.device)
@@ -2901,7 +2853,7 @@ def train(config: TrainConfig):
         log_dict = trainer.train(batch)
 
 
-        # 用同一批观测训练 RND（让“离线分布”上的 state 误差变小）
+
         observations = batch[0]  # [B, state_dim]
         actions = batch[1]       # [B, action_dim]
         rnd.train_predictor(observations,actions)
