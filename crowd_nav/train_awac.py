@@ -682,7 +682,7 @@ def test_actor(
 def train(config: TrainConfig):
     env = gym.make(config.env)
 
-    state_dim = 65
+    state_dim = 91
     action_dim = 2
     max_action = float(1)
 
