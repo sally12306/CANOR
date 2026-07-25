@@ -20,13 +20,11 @@ import matplotlib.pyplot as plt
 
 
 def setup_logger(log_dir: str, name: str = "iql"):
-    """
-    在 log_dir 下创建 train_eval.log（每次运行都会清空旧内容），并同时输出到控制台。
-    """
+
     os.makedirs(log_dir, exist_ok=True)
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    logger.handlers.clear()  # 防止重复添加 handler
+    logger.handlers.clear() 
 
     fmt = logging.Formatter(
         fmt="%(asctime)s | %(levelname)s | %(message)s",
@@ -35,7 +33,7 @@ def setup_logger(log_dir: str, name: str = "iql"):
 
     log_path = os.path.join(log_dir, "train_eval.log")
 
-    # 关键：mode='w' 覆盖写，确保每次运行先清空旧日志
+
     fh = logging.FileHandler(log_path, mode='w', encoding="utf-8")
     fh.setFormatter(fmt)
 
@@ -96,9 +94,9 @@ class TrainConfig:
     batch_size: int = 256
     offline_batch_size: int = 256
     discount: float = 0.99
-    tau: float = 0.005                     # target-Q Polyak coefficient
+    tau: float = 0.005                    
     beta: float = 3.0
-    iql_tau: float = 0.80                  # maximum novelty-conditioned expectile
+    iql_tau: float = 0.80                  
     iql_deterministic: bool = False
     normalize: bool = True
     normalize_reward: bool = False
@@ -286,7 +284,7 @@ class ReplayBuffer:
         self._device = device
         self.rnd_max = 0
         self.rnd_min = 0
-        # 数据存储
+
         self._states = torch.zeros((buffer_size, state_dim), dtype=torch.float32, device=device)
         self._actions = torch.zeros((buffer_size, action_dim), dtype=torch.float32, device=device)
         # Q/V use the actually executed action. Actor extraction uses the
@@ -297,8 +295,7 @@ class ReplayBuffer:
         self._next_states = torch.zeros((buffer_size, state_dim), dtype=torch.float32, device=device)
         self._dones = torch.zeros((buffer_size, 1), dtype=torch.float32, device=device)
 
-        # 新增：存储重要性权重（反向 RND 权重）
-        # 离线数据默认权重建议设为 1.0 (因为它们是分布内数据)
+
         self._weights = torch.zeros((buffer_size, 1), dtype=torch.float32, device=device)
 
     def _to_tensor(self, data: np.ndarray) -> torch.Tensor:
@@ -318,7 +315,7 @@ class ReplayBuffer:
         self._next_states[:n_transitions] = self._to_tensor(data["next_observations"])
         self._dones[:n_transitions] = self._to_tensor(data["terminals"][..., None])
 
-        # 初始化离线数据的权重为 1.0 (代表非常安全/熟悉)
+
         self._weights[:n_transitions] = 0
 
         self._size += n_transitions
@@ -348,7 +345,7 @@ class ReplayBuffer:
             self._weights[:n_transitions] = 1.0
 
         self._size += n_transitions
-        # 修正：虽然这里 pointer 可能回绕为 0，但 size 是正确的
+
         self._pointer = min(self._size, n_transitions) % self._buffer_size
 
         print(f"Dataset size: {n_transitions} loaded into unified buffer.")
@@ -442,12 +439,11 @@ class ReplayBuffer:
         )
         return batch, actual_failure_fraction
 
-    # 实现添加单条数据
     def add_transition(
             self, state, action, reward, next_state, done, weight=1.0,
             actor_action=None,
     ):
-        # 确保输入是 tensor 且在正确的 device 上
+
         if not torch.is_tensor(state):
             state = torch.tensor(state, dtype=torch.float32, device=self._device)
         if not torch.is_tensor(action):
@@ -459,7 +455,7 @@ class ReplayBuffer:
         if not torch.is_tensor(actor_action):
             actor_action = torch.tensor(actor_action, dtype=torch.float32, device=self._device)
 
-        # 写入 buffer
+
         self._states[self._pointer] = state
         self._actions[self._pointer] = action
         self._actor_actions[self._pointer] = actor_action
@@ -468,12 +464,12 @@ class ReplayBuffer:
         self._dones[self._pointer] = float(done)
         self._weights[self._pointer] = float(weight)
 
-        # 更新指针和大小
+
         self._pointer = (self._pointer + 1) % self._buffer_size
         self._size = min(self._size + 1, self._buffer_size)
 
 
-# 在 iql_rrnd.py 中添加
+
 
 class DualReplayBuffer:
     """Static offline replay partition plus circular online replay partition."""
@@ -511,7 +507,7 @@ class DualReplayBuffer:
         return [tensor[mask] for tensor in batch]
 
     def sample(self, batch_size: int, online_ratio: float = 0.5) -> List[torch.Tensor]:
-        """Compatibility sampler without Bernoulli exclusion."""
+
         batch, _ = self.sample_bootstrap_selected(
             batch_size=batch_size,
             online_ratio=online_ratio,
@@ -531,13 +527,7 @@ class DualReplayBuffer:
             online_failure_fraction: float = 0.0,
             return_info: bool = False,
     ):
-        """Construct one shared retained mini-batch and preserve its source id.
 
-        The returned tensor list contains seven replay tensors (including the
-        denoised actor target action) plus ``is_online`` as the eighth tensor. Keeping source identity is required
-        because offline transitions are familiar by construction, whereas only
-        online transitions should be attenuated by the frozen RND estimator.
-        """
         del candidate_multiplier  # retained for backwards-compatible calls
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
@@ -656,13 +646,13 @@ def eval_actor(
         observation = env.reset(phase=phase, test_case=cnt)
         done = False
         rewards = 0
-        gamma = 1  # 折扣因子
+        gamma = 1  
         while not done:
             joint_state = JointState(robot.get_full_state(), observation)
             state = to_np(transform(joint_state, device).view(1, -1).squeeze(0))
-            # print(state.shape)  # 输出为（65，）
+            # print(state.shape)  
             action = actor.act(state)
-            # print(action.shape)  # 输出为（2，）
+            # print(action.shape) 
             action = ActionXY(action[0], action[1])
             observation, reward, done, info = env.step(action)
             # print(reward)
@@ -694,7 +684,7 @@ def eval_actor(
         "episodes": n_episodes,
         "step": global_step,
     }
-    # 列表记录（若提供）
+    
     try:
         list1.append(metrics["success_rate"])
         list2.append(collision / n_episodes if n_episodes else 0.0)
@@ -955,7 +945,7 @@ def return_reward_range(dataset, max_episode_steps):
     return min(returns), max(returns)
 
 
-# 辅助函数：加权的不对称 L2 Loss
+
 def weighted_asymmetric_l2_loss(u: torch.Tensor, tau: float, weights: torch.Tensor) -> torch.Tensor:
     # weights shape: (batch, 1)
     element_wise_loss = torch.abs(tau - (u < 0).float()) * u ** 2
@@ -1112,12 +1102,7 @@ class ValueFunction(nn.Module):
 
 
 class ImplicitQLearning:
-    """CANOR-IQL with stable online adaptation safeguards.
 
-    Q always uses the ordinary Bellman target. Novelty affects the value
-    expectile and policy extraction only. Offline samples are treated as
-    familiar by the caller; online samples carry RND-derived weights.
-    """
 
     def __init__(
             self,
@@ -1230,7 +1215,7 @@ class ImplicitQLearning:
         raise NotImplementedError("Unsupported actor output type")
 
     def set_actor_reference(self) -> None:
-        """Freeze the loaded offline actor as a functional and parameter anchor."""
+
         self.actor_reference = copy.deepcopy(self.actor).to(self.device)
         self.actor_reference.eval()
         self.actor_reference.requires_grad_(False)
@@ -1240,12 +1225,7 @@ class ImplicitQLearning:
         ]
 
     def _project_actor_to_reference(self) -> Dict[str, float]:
-        """Project actor parameters back to a relative L2 trust region.
 
-        This is applied after the single actor optimizer step.  It does not add
-        extra gradient updates and therefore preserves the one-update-per-episode
-        comparison protocol.
-        """
         limit = float(self.actor_max_relative_drift)
         reference = self._actor_reference_parameters
         if limit <= 0.0 or reference is None:
@@ -1418,15 +1398,7 @@ class ImplicitQLearning:
             novelty_w: torch.Tensor,
             failure_mask: torch.Tensor,
     ) -> Tuple[torch.Tensor, float, float]:
-        """Build a conservative local Q-guided target for failed online states.
 
-        Failed transitions remain excluded from behavior cloning.  For each such
-        state, evaluate a small deterministic action neighborhood around the
-        current mean (plus a clipped direction toward the offline actor), choose
-        the best target-Q candidate, and regress to it only when Q improves.
-        This adds signal at persistent collision states without adding another
-        optimizer step or allowing an unconstrained deterministic policy gradient.
-        """
         zero = policy_mean.sum() * 0.0
         if self.actor_failure_recovery_coef <= 0.0 or not bool(failure_mask.any()):
             return zero, 0.0, 0.0
@@ -1572,8 +1544,7 @@ class ImplicitQLearning:
                 policy_advantage[valid_online_actor_mask],
                 q=max(0.0, min(1.0, 1.0 - keep_fraction)),
             )
-            # Use relative ranking to remove a small critic-wide negative bias,
-            # but never accept actions below the configured safety floor.
+
             advantage_threshold = max(
                 float(quantile.item()),
                 float(self.online_advantage_threshold_floor),
@@ -1849,50 +1820,37 @@ def sample_online_batch(
         online_buffer: List,  # 假设是 list of tuples
         batch_size: int,
         device,
-        w_min: float = 0.15,  # 建议默认值：0.15 (对应 norm_error <= 1.0，即不超过离线最大误差)
-        min_safe_num: int = 10,  # 至少要有 10 个安全样本才开始利用在线数据
+        w_min: float = 0.15,  
+        min_safe_num: int = 10,  
 ):
-    """
-    从在线 buffer 中采样。
-    由于权重现在已经归一化到 (0, 1] 且区分度很大：
-    1. 即使不设 w_min，加权采样也会自动偏向安全样本。
-    2. 设 w_min 可以作为硬性过滤，剔除那些极端危险（Error 远超离线分布）的离群点。
-    """
+
     n = len(online_buffer)
     if n == 0:
         return None
 
-    # 1. 提取权重 (优化：如果 buffer 很大，建议在 add 时就维护一个独立的 weights numpy array，不要每次 list comprehension)
-    # 假设 online_buffer 里的结构是 (s, a, r, ns, d, weight)
+
     weights = np.array([tr[5] for tr in online_buffer], dtype=np.float32)
 
-    # 2. 确定候选索引
-    # 逻辑：先用 w_min 剔除"完全不可接受"的样本，剩下的样本中按权重概率采样
 
-    # 筛选出"及格"的样本
-    # w_min = 0.16 意味着允许 norm_error 高达 1.0 (即离线数据的最大误差边界)
-    # w_min = 0.50 意味着要求 norm_error < 0.2 (非常安全)
+
+
     safe_mask = weights >= w_min
     safe_indices = np.where(safe_mask)[0]
 
-    # 如果安全样本太少，直接放弃本次在线采样，退回只用离线数据
+
     if len(safe_indices) < min_safe_num:
         return None
 
-    # 3. 在及格样本中，进行"加权"采样
-    # 这样既保证了不采离谱的样本，又保证了在安全样本里优先采更安全的
     safe_weights = weights[safe_indices]
 
-    # 加上 1e-8 防止除零
+
     probs = safe_weights / (safe_weights.sum() + 1e-8)
 
-    # 4. 执行采样
-    # 注意：如果安全样本数 < batch_size，允许重复采样 (replace=True) 或者只采实际数量
+
     idx_in_safe = np.random.choice(len(safe_indices), size=batch_size, replace=True, p=probs)
     idx = safe_indices[idx_in_safe]
 
-    # 5. 组装 Batch
-    # (这里可以用 zip(*) 来稍微加速解包，或者直接像你原来那样写)
+
     batch_data = [online_buffer[i] for i in idx]
 
     # 拆分数据
@@ -1910,10 +1868,7 @@ def sample_online_batch(
 
 
 def sample_online_batch_uniform(online_buffer, batch_size, device):
-    """
-    不使用 RND 权重，在线数据一律等权重，均匀采样。
-    online_buffer: list of (state, action, reward, next_state, done)
-    """
+
     n = len(online_buffer)
     assert n >= batch_size, "online_buffer 中样本数量不足"
 
