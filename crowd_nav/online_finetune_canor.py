@@ -45,13 +45,7 @@ def setup_logger(log_path: str) -> logging.Logger:
 
 
 def freeze_rnd_estimator(rnd: torch.nn.Module) -> int:
-    """
-    Freeze the action-conditioned RND estimator for the entire online stage.
 
-    The randomized target is already frozen by the RND implementation. Freezing
-    all RND parameters here additionally freezes the predictor network and avoids
-    relying on implementation-specific predictor attribute names.
-    """
     rnd.eval()
     frozen_parameters = 0
     for parameter in rnd.parameters():
@@ -69,10 +63,7 @@ def set_fixed_offline_novelty_statistics(
         dataset: Dict[str, np.ndarray],
         logger: logging.Logger,
 ) -> None:
-    """
-    Use the offline dataset to define the fixed normalization reference
-    (mu_e, sigma_e) used by Eq. (7) during online fine-tuning.
-    """
+
     logger.info("Computing fixed offline RND prediction-error statistics...")
     try:
         errors = rnd.compute_dataset_novelty(
@@ -102,7 +93,6 @@ def set_fixed_offline_novelty_statistics(
             "statistics for novelty normalization."
         )
 
-    # RunningMeanStd implementations generally expose mutable mean, var, count.
     current_mean = getattr(rnd.rms, "mean", 0.0)
     current_var = getattr(rnd.rms, "var", 1.0)
     if torch.is_tensor(current_mean):
@@ -148,18 +138,10 @@ def set_fixed_offline_novelty_statistics(
 
 @pyrallis.wrap()
 def main(config: TrainConfig):
-    """
-    Run CANOR online fine-tuning with exactly one update per episode.
-
-    The online learner uses a frozen offline-RND safety anchor, trusted-only RND
-    adaptation, positive-advantage online actor regression, failed-trajectory
-    actor masking, and an offline-policy trust region.
-    """
+    
     if config.checkpoints_path is None:
         raise ValueError("config.checkpoints_path must not be None")
 
-    # TrainConfig defaults define the stable run. Keeping the parsed values here
-    # makes command-line and YAML hyperparameter ablations actually effective.
     if int(config.online_steps_per_update) != 1:
         raise ValueError("This fair-comparison runner requires one update per episode")
 
@@ -406,8 +388,6 @@ def main(config: TrainConfig):
         actor_max_relative_drift=config.actor_max_relative_drift,
     )
 
-    # Keep a deliberately fixed non-best offline initialization.
-    # Preserve offline Adam moments, but disable the exhausted cosine scheduler.
     expected_iql_name = f"iql_checkpoint_{int(config.expected_offline_checkpoint_step)}.pt"
     if os.path.basename(offline_iql_path) != expected_iql_name:
         raise RuntimeError(
@@ -443,18 +423,13 @@ def main(config: TrainConfig):
             int(config.expected_offline_checkpoint_step),
             int(config.expected_offline_checkpoint_step) + 1,
         )
-    # The checkpoint stores state_dicts, so the exact architecture must be
-    # instantiated once. strict=True inside load_state_dict verifies every key
-    # and shape. These loaded objects are reused; no network is recreated later.
+
     trainer.load_state_dict(
         iql_checkpoint,
         load_optimizers=bool(config.preserve_offline_optimizer_state),
         load_scheduler=False,
     )
-    # The loaded networks are reused exactly; optimizer-state handling does not
-    # recreate or alter any actor/Q/V parameter tensor.
-    # Verify every actor tensor is bitwise identical to the checkpoint before
-    # any online interaction or gradient update.
+
     loaded_actor_state = trainer.actor.state_dict()
     for key, checkpoint_tensor in iql_checkpoint["actor"].items():
         if key not in loaded_actor_state:
