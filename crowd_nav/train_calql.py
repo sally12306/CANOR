@@ -265,7 +265,7 @@ def eval_actor(
         observation = env.reset(phase=phase, test_case=cnt)
         done = False
         rewards = 0
-        gamma = 1  # 折扣因子
+        gamma = 1  
         while not done:
             joint_state = JointState(robot.get_full_state(), observation)
             state = to_np(transform(joint_state, device).view(1, -1).squeeze(0))
@@ -1364,15 +1364,7 @@ def train(config: TrainConfig):
                 seed=config.seed,
             )
 
-            # # 保存 checkpoint
-            # if config.checkpoints_path:
-            #     torch.save(
-            #         trainer.state_dict(),
-            #         os.path.join(config.checkpoints_path, f"checkpoint_{t}.pt"),
-            #     )
-
-            # wandb 日志
-            # wandb.log(eval_log, step=trainer.total_it)
+    
     test_actor(
         env,
         actor,
