@@ -1,6 +1,6 @@
 # CANOR
 
-This repository contains the codes for our paper titled "CANOR: Conflict-Aware Novelty-Weighted Offline-to-Online Reinforcement Learning for Robot Crowd Navigation". [▶ Watch the real-world demonstration on YouTube](https://www.youtube.com/watch?v=GUwWTndJgiE)
+This repository contains the codes for our paper titled "CANOR: A Conflict-Aware Novelty-Guided Offline-to-Online Reinforcement Learning for Robot Crowd Navigation". [▶ Watch the real-world demonstration on YouTube](https://www.youtube.com/watch?v=GUwWTndJgiE)
 
 
 
